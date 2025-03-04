@@ -26,9 +26,9 @@ const styleConfig = {
       type: "geojson",
       data: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_antarctic_ice_shelves_polys.geojson"
     },
-    "natural-resources": {
+    "data-soil": {
       type: "geojson",
-      data: "https://raw.githubusercontent.com/davisanderson11/earthdata/main/geojson/resourceData.geojson"
+      data: "https://raw.githubusercontent.com/davisanderson11/openEarth/main/geojson/soil-quality-0-5deg.geojson"
     }
   },
   layers: [
@@ -98,9 +98,9 @@ const styleConfig = {
     },
     // Natural Resources (transparent fill)
     {
-      id: "resource-fill",
+      id: "data-soil-fill",
       type: "fill",
-      source: "natural-resources",
+      source: "data-soil",
       paint: {
         "fill-color": "#000000",
         "fill-opacity": 0,

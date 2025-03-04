@@ -1,10 +1,10 @@
 // Add a click event to display popup information for climate and resource features.
 map.on("click", (e) => {
     const climateFeatures = map.queryRenderedFeatures(e.point, { layers: ['climate-fill'] });
-    const resourceFeatures = map.queryRenderedFeatures(e.point, { layers: ['resource-fill'] });
+    const soilFeatures = map.queryRenderedFeatures(e.point, { layers: ['data-soil-fill'] });
   
     // Only show a popup if relevant features are clicked
-    if (!climateFeatures.length && !resourceFeatures.length) {
+    if (!climateFeatures.length && !soilFeatures.length) {
       return;
     }
   
@@ -16,9 +16,9 @@ map.on("click", (e) => {
       popupHTML += `<strong>Koppen Code:</strong> ${koppenCode}<br>`;
     }
   
-    if (resourceFeatures.length > 0) {
-      const resourceName = resourceFeatures[0].properties.resource || "Unknown Resource";
-      popupHTML += `<strong>Resources:</strong> ${resourceName}`;
+    if (soilFeatures.length > 0) {
+      const soilType = soilFeatures[0].properties.quality || "Unknown Soil Type";
+      popupHTML += `<strong>Soil Class:</strong> ${soilType}`;
     }
   
     new mapboxgl.Popup()
