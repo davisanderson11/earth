@@ -28,7 +28,7 @@ const styleConfig = {
     },
     "data-soil": {
       type: "geojson",
-      data: "https://raw.githubusercontent.com/davisanderson11/openEarth/main/geojson/soil-quality-0-5deg.geojson"
+      data: "https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson"
     }
   },
   layers: [
