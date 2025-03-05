@@ -49,12 +49,12 @@ map.on("click", (e) => {
   if (onLand.length) {
     const longitude = e.lngLat.lng.toFixed(3);
     const latitude = e.lngLat.lat.toFixed(3);
-    infoHTML += `<strong>Coordinates:</strong> ${longitude}, ${latitude}<br>`;
+    infoHTML += `<h3>${longitude}, ${latitude}</h3>`;
   }
   
   if (climateFeature) {
-    const koppenCode = climateFeature.properties.CODE;
-    infoHTML += `<strong>Koppen Code:</strong> ${koppenCode}<br>`;
+    const koppenCode = climateFeature.properties.CODE || "Unknown Climate";
+    infoHTML += `<strong>Climate:</strong> ${koppenCode}<br>`;
   }
   
   if (soilFeature) {
