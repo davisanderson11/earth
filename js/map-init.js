@@ -29,6 +29,10 @@ const styleConfig = {
     "data-soil": {
       type: "geojson",
       data: "https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson"
+    },
+    "data-vegetation": {
+      type: "geojson",
+      data: "https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/vegetation-0-5deg.geojson"
     }
   },
   layers: [
@@ -96,11 +100,22 @@ const styleConfig = {
         "fill-outline-color": "#ffffff"
       }
     },
-    // Natural Resources (transparent fill)
+    // Soil Quality
     {
       id: "data-soil-fill",
       type: "fill",
       source: "data-soil",
+      paint: {
+        "fill-color": "#000000",
+        "fill-opacity": 0,
+        "fill-outline-color": "#000000"
+      }
+    },
+    // Vegetation
+    {
+      id: "data-vegetation-fill",
+      type: "fill",
+      source: "data-vegetation",
       paint: {
         "fill-color": "#000000",
         "fill-opacity": 0,
