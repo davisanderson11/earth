@@ -110,7 +110,29 @@ map.touchZoomRotate.enableRotation();
 
 // When the map loads, set the pitch, add the climate data layer, and apply the fog effect.
 map.on("load", () => {
-  map.setPitch(10);
+  map.setPitch(25);
+  map.addSource("mapbox-dem", {
+    type: "raster-dem",
+    url: "mapbox://mapbox.terrain-rgb",
+    tilesize: 512,
+    maxzoom: 14
+  });
+
+  map.setTerrain({
+    source:"mapbox-dem",
+    exaggeration:2
+  })
+
+  map.addLayer({
+    id: "hillshade",
+    type: "hillshade",
+    source: "mapbox-dem",
+    paint:{
+      "hillshade-illumination-direction": 315,
+      "hillshade-illumination-anchor": "viewport",
+      "hillshade-exaggeration": 0.25
+    }
+  })
 
   // Add fog effect for a more immersive experience.
   map.setFog({
