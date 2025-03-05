@@ -25,15 +25,8 @@ const styleConfig = {
     "antarctic-ice-shelves": {
       type: "geojson",
       data: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_antarctic_ice_shelves_polys.geojson"
-    },
-    "data-soil": {
-      type: "geojson",
-      data: "https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson"
-    },
-    "data-vegetation": {
-      type: "geojson",
-      data: "https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/vegetation-0-5deg.geojson"
     }
+    // Note: The "data-soil" and "data-vegetation" sources are removed from the map style.
   },
   layers: [
     // Ocean background
@@ -99,29 +92,8 @@ const styleConfig = {
         "fill-color": "#ffffff",
         "fill-outline-color": "#ffffff"
       }
-    },
-    // Soil Quality
-    {
-      id: "data-soil-fill",
-      type: "fill",
-      source: "data-soil",
-      paint: {
-        "fill-color": "#000000",
-        "fill-opacity": 0,
-        "fill-outline-color": "#000000"
-      }
-    },
-    // Vegetation
-    {
-      id: "data-vegetation-fill",
-      type: "fill",
-      source: "data-vegetation",
-      paint: {
-        "fill-color": "#000000",
-        "fill-opacity": 0,
-        "fill-outline-color": "#000000"
-      }
     }
+    // Note: No fill layers for soil or vegetation are added.
   ]
 };
 
@@ -138,7 +110,7 @@ const map = new mapboxgl.Map({
 map.dragRotate.enable();
 map.touchZoomRotate.enableRotation();
 
-// When the map loads, set the pitch and add the climate data layer and fog effect.
+// When the map loads, set the pitch, add the climate data layer, and apply the fog effect.
 map.on("load", () => {
   map.setPitch(10);
 
@@ -197,7 +169,7 @@ map.on("load", () => {
           "fill-outline-color": "#666666",
           "fill-opacity": 0
         }
-      }, "land-fill"); // Ensure climate layer is above the land layer.
+      }, "land-fill"); // Ensure the climate layer is placed above the land layer.
     })
     .catch(err => {
       console.error("Could not load or parse climate data:", err);
@@ -212,5 +184,15 @@ map.on("load", () => {
   });
 });
 
-// Expose the map object globally so other scripts (like the click handler) can access it.
+// Expose the map object globally so that other scripts (like the click handler) can access it.
 window.map = map;
+
+// Load soil and vegetation data separately for spatial queries (without rendering them)
+Promise.all([
+  fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson")
+    .then(response => response.json())
+    .then(data => { window.soilData = data; }),
+  fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/vegetation-0-5deg.geojson")
+    .then(response => response.json())
+    .then(data => { window.vegetationData = data; })
+]).catch(err => console.error("Error loading additional data:", err));

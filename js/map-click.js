@@ -1,44 +1,65 @@
 // Add a click event to display popup information for climate and resource features.
 map.on("click", (e) => {
-    const onLand = map.queryRenderedFeatures(e.point, {layers:['land-fill']});
-    const climateFeatures = map.queryRenderedFeatures(e.point, {layers: ['climate-fill']});
-    const soilFeatures = map.queryRenderedFeatures(e.point, {layers:['data-soil-fill']});
-    const vegetationFeatures = map.queryRenderedFeatures(e.point, {layers:['data-vegetation-fill']});
+  // Query features that are rendered (land and climate)
+  const onLand = map.queryRenderedFeatures(e.point, { layers: ['land-fill'] });
+  const climateFeatures = map.queryRenderedFeatures(e.point, { layers: ['climate-fill'] });
   
-    // Only show a popup if relevant features are clicked
-    if (!onLand.length) {
-        if (!climateFeatures.length && !soilFeatures.length && !vegetationFeatures.length) {
-            return;
-        }
-    }  
+  // Create a Turf.js point from the click coordinates
+  const point = turf.point([e.lngLat.lng, e.lngLat.lat]);
 
-    let infoHTML = "";
-    
-    if (onLand.length > 0) {
-      var coordinates = e.lngLat
-      infoHTML += `<strong>Coordinates:</strong> ${coordinates}<br>`;
-        if (climateFeatures.length > 0) {
-            const climateFeature = climateFeatures[0];
-            const koppenCode = climateFeature.properties.CODE;
-            infoHTML += `<strong>Koppen Code:</strong> ${koppenCode}<br>`;
-          }
-        
-        if (soilFeatures.length > 0) {
-            const soilType = soilFeatures[0].properties.quality || "Unknown Soil Class";
-            infoHTML += `<strong>Soil Class:</strong> ${soilType}<br>`;
-          }
-          
-          if (vegetationFeatures.length > 0) {
-            const vegetationType = vegetationFeatures[0].properties.class || "Unknown Vegetation Type";
-            infoHTML += `<strong>Vegetation:</strong> ${vegetationType}<br>`;
-          }
-          
-          document.getElementById('sidebar-content').innerHTML = infoHTML;
-          document.getElementById('sidebar').style.display = 'block';
-          //new mapboxgl.Popup()
-          //.setLngLat(e.lngLat)
-          //.setHTML(infoHTML)
-          //.addTo(map);
+  // Check soil data using Turf.js (if loaded)
+  let soilFeature = null;
+  if (window.soilData && window.soilData.features) {
+    for (let feature of window.soilData.features) {
+      if (turf.booleanPointInPolygon(point, feature)) {
+        soilFeature = feature;
+        break;
+      }
     }
-  });
+  }
+
+  // Check vegetation data using Turf.js (if loaded)
+  let vegetationFeature = null;
+  if (window.vegetationData && window.vegetationData.features) {
+    for (let feature of window.vegetationData.features) {
+      if (turf.booleanPointInPolygon(point, feature)) {
+        vegetationFeature = feature;
+        break;
+      }
+    }
+  }
+
+  // Only proceed if any relevant feature is detected
+  if (!onLand.length && !climateFeatures.length && !soilFeature && !vegetationFeature) {
+    return;
+  }
+
+  let infoHTML = "";
   
+  // Show coordinates if clicked on land
+  if (onLand.length) {
+    const longitude = e.lngLat.lng.toFixed(3);
+    const latitude = e.lngLat.lat.toFixed(3);
+    infoHTML += `<strong>Coordinates:</strong> ${longitude}, ${latitude}<br>`;
+  }
+  
+  if (climateFeatures.length > 0) {
+    const climateFeature = climateFeatures[0];
+    const koppenCode = climateFeature.properties.CODE;
+    infoHTML += `<strong>Koppen Code:</strong> ${koppenCode}<br>`;
+  }
+  
+  if (soilFeature) {
+    const soilType = soilFeature.properties.quality || "Unknown Soil Class";
+    infoHTML += `<strong>Soil Class:</strong> ${soilType}<br>`;
+  }
+  
+  if (vegetationFeature) {
+    const vegetationType = vegetationFeature.properties.class || "Unknown Vegetation Type";
+    infoHTML += `<strong>Vegetation:</strong> ${vegetationType}<br>`;
+  }
+
+  // Display the info in the sidebar
+  document.getElementById('sidebar-content').innerHTML = infoHTML;
+  document.getElementById('sidebar').style.display = 'block';
+});
