@@ -110,7 +110,7 @@ map.touchZoomRotate.enableRotation();
 
 // When the map loads, set the pitch, add the climate data layer, and apply the fog effect.
 map.on("load", () => {
-  map.setPitch(25);
+  map.setPitch(10);
   map.addSource("mapbox-dem", {
     type: "raster-dem",
     url: "mapbox://mapbox.terrain-rgb",
