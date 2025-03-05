@@ -118,11 +118,6 @@ map.on("load", () => {
     maxzoom: 14
   });
 
-  map.setTerrain({
-    source:"mapbox-dem",
-    exaggeration:2
-  })
-
   map.addLayer({
     id: "hillshade",
     type: "hillshade",
