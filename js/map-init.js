@@ -95,7 +95,7 @@ const styleConfig = {
   ]
 };
 
-// Initialize the Mapbox map
+// Initialize the map
 const map = new mapboxgl.Map({
   container: "map",
   style: styleConfig,
@@ -104,15 +104,15 @@ const map = new mapboxgl.Map({
   projection: "globe"
 });
 
-// Enable additional map controls
+// Additional map controls
 map.dragRotate.enable();
 map.touchZoomRotate.enableRotation();
 
-// When the map loads, set the pitch, add the climate data layer, and apply the fog effect.
+// Load the map
 map.on("load", () => {
   map.setPitch(10);
 
-  // Add fog effect for a more immersive experience.
+  // Create atmosphere
   map.setFog({
     color: "rgb(186, 210, 235)",
     "high-color": "rgb(36, 92, 223)",
@@ -121,10 +121,10 @@ map.on("load", () => {
   });
 });
 
-// Expose the map object globally so that other scripts (like the click handler) can access it.
+// Allow other scripts to access the map
 window.map = map;
 
-// Load soil and vegetation data separately for spatial queries (without rendering them)
+// Preload OpenGeo data
 Promise.all([
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson")
     .then(response => response.json())

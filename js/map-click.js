@@ -10,7 +10,7 @@ map.on("click", (e) => {
   if (window.climateData && window.climateData.features) {
     for (let feature of window.climateData.features) {
       if (turf.booleanPointInPolygon(point, feature)) {
-        climateFeature = feature;  // assign the matched feature
+        climateFeature = feature;  // Assign the matched feature
         break;
       }
     }
@@ -27,7 +27,7 @@ map.on("click", (e) => {
     }
   }
 
-  // Check vegetation data using Turf.js (if loaded)
+  // Check vegetation data
   let vegetationFeature = null;
   if (window.vegetationData && window.vegetationData.features) {
     for (let feature of window.vegetationData.features) {
