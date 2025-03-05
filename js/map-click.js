@@ -1,4 +1,4 @@
-// Add a click event to display popup information for climate and resource features.
+// Add a click event to display popup information for climate and resource features
 map.on("click", (e) => {
   // Query features that are rendered (land and climate)
   const onLand = map.queryRenderedFeatures(e.point, { layers: ['land-fill'] });
@@ -7,7 +7,7 @@ map.on("click", (e) => {
   // Create a Turf.js point from the click coordinates
   const point = turf.point([e.lngLat.lng, e.lngLat.lat]);
 
-  // Check soil data using Turf.js (if loaded)
+  // Check soil data
   let soilFeature = null;
   if (window.soilData && window.soilData.features) {
     for (let feature of window.soilData.features) {

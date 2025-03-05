@@ -26,7 +26,6 @@ const styleConfig = {
       type: "geojson",
       data: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_antarctic_ice_shelves_polys.geojson"
     }
-    // Note: The "data-soil" and "data-vegetation" sources are removed from the map style.
   },
   layers: [
     // Ocean background
@@ -93,7 +92,6 @@ const styleConfig = {
         "fill-outline-color": "#ffffff"
       }
     }
-    // Note: No fill layers for soil or vegetation are added.
   ]
 };
 
@@ -134,36 +132,6 @@ map.on("load", () => {
           "fill-color": [
             "match",
             ["get", "CODE"],
-            "Af",  "#228B22",
-            "Am",  "#2DC12D",
-            "Aw",  "#a6d96a",
-            "BWh", "#fcd19c",
-            "BWk", "#f4a460",
-            "BSh", "#ffdda0",
-            "BSk", "#ffc680",
-            "Csa", "#e78670",
-            "Csb", "#f6bfb2",
-            "Csc", "#f8ddd7",
-            "Cwa", "#fad859",
-            "Cwb", "#c6e2ff",
-            "Cwc", "#b3cde3",
-            "Cfa", "#fadc76",
-            "Cfb", "#d7ecff",
-            "Cfc", "#aad4ff",
-            "Dsa", "#ffa8a0",
-            "Dsb", "#ffc8c0",
-            "Dsc", "#ffe3dd",
-            "Dsd", "#ffeceb",
-            "Dfa", "#ffc04c",
-            "Dfb", "#ffa500",
-            "Dfc", "#a0522d",
-            "Dfd", "#cd5c5c",
-            "Dwa", "#ffdcdc",
-            "Dwb", "#ffc7bf",
-            "Dwc", "#ffb6ad",
-            "Dwd", "#ffaba3",
-            "ET",  "#c0d9d9",
-            "EF",  "#ffffff",
             "#b8b8b8"
           ],
           "fill-outline-color": "#666666",
@@ -184,10 +152,10 @@ map.on("load", () => {
   });
 });
 
-// Expose the map object globally so that other scripts (like the click handler) can access it.
+// Expose the map object globally
 window.map = map;
 
-// Load soil and vegetation data separately for spatial queries (without rendering them)
+// Load data seperately
 Promise.all([
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson")
     .then(response => response.json())
