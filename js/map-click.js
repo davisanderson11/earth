@@ -2,11 +2,20 @@
 map.on("click", (e) => {
   // Query features that are rendered (land and climate)
   const onLand = map.queryRenderedFeatures(e.point, { layers: ['land-fill'] });
-  const climateFeatures = map.queryRenderedFeatures(e.point, { layers: ['climate-fill'] });
   
   // Create a Turf.js point from the click coordinates
   const point = turf.point([e.lngLat.lng, e.lngLat.lat]);
 
+  let climateFeature = null;
+  if (window.climateData && window.climateData.features) {
+    for (let feature of window.climateData.features) {
+      if (turf.booleanPointInPolygon(point, feature)) {
+        climateFeature = feature;  // assign the matched feature
+        break;
+      }
+    }
+  }
+  
   // Check soil data
   let soilFeature = null;
   if (window.soilData && window.soilData.features) {
@@ -30,7 +39,7 @@ map.on("click", (e) => {
   }
 
   // Only proceed if any relevant feature is detected
-  if (!onLand.length && !climateFeatures.length && !soilFeature && !vegetationFeature) {
+  if (!onLand.length && !climateFeature && !soilFeature && !vegetationFeature) {
     return;
   }
 
@@ -43,8 +52,7 @@ map.on("click", (e) => {
     infoHTML += `<strong>Coordinates:</strong> ${longitude}, ${latitude}<br>`;
   }
   
-  if (climateFeatures.length > 0) {
-    const climateFeature = climateFeatures[0];
+  if (climateFeature) {
     const koppenCode = climateFeature.properties.CODE;
     infoHTML += `<strong>Koppen Code:</strong> ${koppenCode}<br>`;
   }

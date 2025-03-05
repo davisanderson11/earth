@@ -112,37 +112,6 @@ map.touchZoomRotate.enableRotation();
 map.on("load", () => {
   map.setPitch(10);
 
-  const climateUrl = "https://raw.githubusercontent.com/circleofconfusion/climate-map/master/topojson/1976-2000.geojson";
-
-  fetch(climateUrl)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`Failed to load climate data: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(climateData => {
-      // Add climate data source and layer
-      map.addSource("climate", { type: "geojson", data: climateData });
-      map.addLayer({
-        id: "climate-fill",
-        type: "fill",
-        source: "climate",
-        paint: {
-          "fill-color": [
-            "match",
-            ["get", "CODE"],
-            "#b8b8b8"
-          ],
-          "fill-outline-color": "#666666",
-          "fill-opacity": 0
-        }
-      }, "land-fill"); // Ensure the climate layer is placed above the land layer.
-    })
-    .catch(err => {
-      console.error("Could not load or parse climate data:", err);
-    });
-
   // Add fog effect for a more immersive experience.
   map.setFog({
     color: "rgb(186, 210, 235)",
@@ -152,15 +121,19 @@ map.on("load", () => {
   });
 });
 
-// Expose the map object globally
+// Expose the map object globally so that other scripts (like the click handler) can access it.
 window.map = map;
 
-// Load data seperately
+// Load soil and vegetation data separately for spatial queries (without rendering them)
 Promise.all([
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson")
     .then(response => response.json())
     .then(data => { window.soilData = data; }),
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/vegetation-0-5deg.geojson")
     .then(response => response.json())
-    .then(data => { window.vegetationData = data; })
-]).catch(err => console.error("Error loading additional data:", err));
+    .then(data => { window.vegetationData = data; }),
+  fetch("https://raw.githubusercontent.com/circleofconfusion/climate-map/master/topojson/1976-2000.geojson")
+    .then(response => response.json())
+    .then(data =>{window.climateData = data;})
+])
+.catch(err => console.error("Error loading additional data:", err));
