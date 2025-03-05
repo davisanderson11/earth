@@ -114,7 +114,7 @@ map.on("load", () => {
   map.addSource("mapbox-dem", {
     type: "raster-dem",
     url: "mapbox://mapbox.terrain-rgb",
-    tilesize: 512,
+    tilesize: 128,
     maxzoom: 14
   });
 
@@ -125,7 +125,7 @@ map.on("load", () => {
     paint:{
       "hillshade-illumination-direction": 315,
       "hillshade-illumination-anchor": "viewport",
-      "hillshade-exaggeration": 0.25
+      "hillshade-exaggeration": 0.12
     }
   })
 
