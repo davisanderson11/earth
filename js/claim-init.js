@@ -34,11 +34,6 @@ function interpolatePoints(p1, p2, t) {
   return turf.point([lng, lat]);
 }
 
-/**
- * Does a small binary search between last on-land and next off-land to find the “coastline”
- * (the boundary where speed changes from > 0 to = 0). The speedMap dictionary is used
- * for ocean vs. land checks. We return a point close to that boundary.
- */
 function approximateCoastline(lastOnLand, offLand, maxIterations = 6) {
   let lowPt = lastOnLand;
   let highPt = offLand;
@@ -57,12 +52,6 @@ function approximateCoastline(lastOnLand, offLand, maxIterations = 6) {
   return lowPt;
 }
 
-/**
- * Single-pass territory claiming with sub-degree steps + “coastline snap.”
- * - Divides 360° into 9° increments (rays).
- * - Each ray starts with power=200, stepping 0.1 km at a time.
- * - If we detect the next step is off land => binary search for boundary => end the ray.
- */
 function computeTerritoryPolygon(capitalPoint) {
   const initialPower = 200;
   const kmStep = 0.1;
@@ -120,9 +109,6 @@ async function fetchLandGeoJSON() {
   return resp.json();
 }
 
-/**
- * Splits the land polygons into claimed vs. unclaimed. Claimed portions will be colored pink.
- */
 function splitLandByClaim(landFC, claimPoly) {
   const outFeatures = [];
 
@@ -142,9 +128,6 @@ function splitLandByClaim(landFC, claimPoly) {
   return turf.featureCollection(outFeatures);
 }
 
-/**
- * Update the existing 'land' source to show claimed polygons in pink, unclaimed in default color.
- */
 function applyClaimToLandSource(splitFC) {
   map.getSource("land").setData(splitFC);
   map.setPaintProperty("land-fill", "fill-color", [
@@ -155,10 +138,6 @@ function applyClaimToLandSource(splitFC) {
   ]);
 }
 
-/**
- * Create a button to pick a capital, compute sub-degree territory, and color only that portion pink.
- * After the territory is computed, remove the grid layer and source (to save memory).
- */
 function createSetCapitalButton() {
   const btn = document.createElement("button");
   btn.id = "setCapitalButton";
@@ -183,7 +162,7 @@ function createSetCapitalButton() {
         return;
       }
       const sidebarContent = document.getElementById("sidebar-content");
-      sidebarContent.innerHTML = "Computing territory with binary coastline snap...";
+      sidebarContent.innerHTML = "Computing territory...";
       document.getElementById("sidebar").style.display = "block";
 
       const capital = turf.point([e.lngLat.lng, e.lngLat.lat]);
@@ -192,8 +171,6 @@ function createSetCapitalButton() {
       const landFC = await fetchLandGeoJSON();
       const splitFC = splitLandByClaim(landFC, rawPolygon);
       applyClaimToLandSource(splitFC);
-
-      sidebarContent.innerHTML = "Done! Claimed portion is pink, rest remains normal.";
 
       // Remove the grid layer and source to free memory
       if (map.getLayer('speedMapLayer')) {
