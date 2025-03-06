@@ -141,7 +141,7 @@ function applyClaimToLandSource(splitFC) {
 function createSetCapitalButton() {
   const btn = document.createElement("button");
   btn.id = "setCapitalButton";
-  btn.textContent = "Set Capital (Binary Coast Snap)";
+  btn.textContent = "Set Capital [Debug]";
   btn.style.cssText = `
     position: absolute;
     top: 10px;
