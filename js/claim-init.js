@@ -182,11 +182,6 @@ function createSetCapitalButton() {
         btn.click();
         return;
       }
-
-      new mapboxgl.Marker({ color: "red" })
-        .setLngLat(e.lngLat)
-        .addTo(map);
-
       const sidebarContent = document.getElementById("sidebar-content");
       sidebarContent.innerHTML = "Computing territory with binary coastline snap...";
       document.getElementById("sidebar").style.display = "block";
