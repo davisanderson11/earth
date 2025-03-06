@@ -4,7 +4,7 @@
 
 const LAND_DATA_URL  = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson";
 const LAKES_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_lakes.geojson";
-const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_rivers_lake_centerlines.geojson";
+const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_rivers_lake_centerlines.geojson";
 
 const LAT_START = -90, LAT_END = 90;
 const LON_START = -180, LON_END = 180;
@@ -94,7 +94,7 @@ async function loadExistingLandGrid() {
     console.log("Loaded land grid from file. #features=", data.features.length);
     return true;
   } catch (err) {
-    console.log("No existing landData.json. We'll build a new one:", err);
+    console.log("No existing landData.json", err);
     return false;
   }
 }
@@ -113,7 +113,7 @@ function autoDownloadLandGrid() {
     link.href = URL.createObjectURL(blob);
     link.click();
   } catch (err) {
-    console.warn("Auto-download failed:", err);
+    console.warn("Download failed:", err);
   }
 }
 
@@ -125,7 +125,7 @@ function autoDownloadLandGrid() {
  */
 async function initSpeedMap() {
   try {
-    updateSidebarMessage("Loading land, lakes, and rivers data...");
+    updateSidebarMessage("Loading geographic data...");
 
     // Fetch all data in parallel
     const [landResp, lakesResp, riversResp] = await Promise.all([
@@ -148,7 +148,7 @@ async function initSpeedMap() {
       for (let i = 0; i < CHUNK_SIZE_LAT; i++) {
         if (currentLat > LAT_END) break;
 
-        updateSidebarMessage(`Building 1° land grid... lat=${currentLat}`);
+        updateSidebarMessage(`Building grid. lat=${currentLat}`);
 
         for (let lon = LON_START; lon <= LON_END; lon += DEG_STEP) {
           const pt = turf.point([lon, currentLat]);
@@ -208,10 +208,10 @@ async function initSpeedMap() {
       if (currentLat <= LAT_END) {
         requestAnimationFrame(processChunk);
       } else {
-        updateSidebarMessage(`Done. Built ${Object.keys(window.speedMap).length} land points. Rendering...`);
+        updateSidebarMessage(`Built ${Object.keys(window.speedMap).length} land points. Rendering...`);
         renderSpeedMap();
         autoDownloadLandGrid();
-        updateSidebarMessage("All done. Land grid was also downloaded locally as landData.json");
+        updateSidebarMessage("Downloaded as landData.json");
       }
     }
 
@@ -232,7 +232,7 @@ async function initSpeedMap() {
 map.on('load', async () => {
   const loaded = await loadExistingLandGrid();
   if (loaded) {
-    updateSidebarMessage("Loaded existing landData.json. Ready to set a capital!");
+    updateSidebarMessage("Loaded existing landData.json");
     renderSpeedMap();
   } else {
     initSpeedMap();
