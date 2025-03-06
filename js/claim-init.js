@@ -54,20 +54,19 @@ function approximateCoastline(lastOnLand, offLand, maxIterations = 6) {
       highPt = mid;
     }
   }
-  // after ~6 iterations, lowPt is near the boundary
   return lowPt;
 }
 
 /**
  * Single-pass territory claiming with sub-degree steps + “coastline snap.”
  * - Divides 360° into 9° increments (rays).
- * - Each ray starts with power=20, stepping 1 km at a time.
+ * - Each ray starts with power=200, stepping 0.1 km at a time.
  * - If we detect the next step is off land => binary search for boundary => end the ray.
  */
 function computeTerritoryPolygon(capitalPoint) {
   const initialPower = 200;
   const kmStep = 0.1;
-  const angleStep = 9;
+  const angleStep = 1;
   const endpoints = [];
 
   for (let angle = 0; angle < 360; angle += angleStep) {
@@ -77,31 +76,13 @@ function computeTerritoryPolygon(capitalPoint) {
     while (rayPower > 0) {
       const speed = getSpeedFromDictionary(currentPos);
       if (speed <= 0) {
-        // Already ocean => break
         break;
       }
 
-      // Attempt a full 1km step
       if (rayPower > speed) {
         rayPower -= speed;
         const nextPos = fastDestination(currentPos, kmStep, angle);
         const nextSpeed = getSpeedFromDictionary(nextPos);
-        if (nextSpeed <= 0) {
-          // next is off land => approximate boundary
-          const boundaryPt = approximateCoastline(currentPos, nextPos);
-          endpoints.push(boundaryPt.geometry.coordinates);
-          break; // done with this ray
-        } else {
-          // land => keep going
-          currentPos = nextPos;
-        }
-
-      } else {
-        // partial step
-        const fraction = rayPower / speed;
-        const nextPos = fastDestination(currentPos, kmStep * fraction, angle);
-        const nextSpeed = getSpeedFromDictionary(nextPos);
-
         if (nextSpeed <= 0) {
           const boundaryPt = approximateCoastline(currentPos, nextPos);
           endpoints.push(boundaryPt.geometry.coordinates);
@@ -109,17 +90,25 @@ function computeTerritoryPolygon(capitalPoint) {
         } else {
           currentPos = nextPos;
         }
-        rayPower = 0; // used up
+      } else {
+        const fraction = rayPower / speed;
+        const nextPos = fastDestination(currentPos, kmStep * fraction, angle);
+        const nextSpeed = getSpeedFromDictionary(nextPos);
+        if (nextSpeed <= 0) {
+          const boundaryPt = approximateCoastline(currentPos, nextPos);
+          endpoints.push(boundaryPt.geometry.coordinates);
+          break;
+        } else {
+          currentPos = nextPos;
+        }
+        rayPower = 0;
       }
     }
-
     if (rayPower <= 0) {
-      // We used up power on land, so finalize the endpoint
       endpoints.push(currentPos.geometry.coordinates);
     }
   }
 
-  // close polygon
   endpoints.push(endpoints[0]);
   return turf.polygon([endpoints]);
 }
@@ -132,21 +121,17 @@ async function fetchLandGeoJSON() {
 }
 
 /**
- * Splits the land polygons into claimed vs. unclaimed. We do this so that only
- * the claimed portion will appear pink, while the rest remains normal.
+ * Splits the land polygons into claimed vs. unclaimed. Claimed portions will be colored pink.
  */
 function splitLandByClaim(landFC, claimPoly) {
   const outFeatures = [];
 
   for (const landFeat of landFC.features) {
-    // Intersection => claimed
     const intersection = turf.intersect(landFeat, claimPoly);
     if (intersection) {
       intersection.properties = { ...intersection.properties, claimed: true };
       outFeatures.push(intersection);
     }
-
-    // Difference => unclaimed
     const leftover = turf.difference(landFeat, claimPoly);
     if (leftover) {
       leftover.properties = { ...leftover.properties, claimed: false };
@@ -162,7 +147,6 @@ function splitLandByClaim(landFC, claimPoly) {
  */
 function applyClaimToLandSource(splitFC) {
   map.getSource("land").setData(splitFC);
-
   map.setPaintProperty("land-fill", "fill-color", [
     "case",
     ["==", ["get", "claimed"], true],
@@ -173,6 +157,7 @@ function applyClaimToLandSource(splitFC) {
 
 /**
  * Create a button to pick a capital, compute sub-degree territory, and color only that portion pink.
+ * After the territory is computed, remove the grid layer and source (to save memory).
  */
 function createSetCapitalButton() {
   const btn = document.createElement("button");
@@ -190,9 +175,7 @@ function createSetCapitalButton() {
   document.body.appendChild(btn);
 
   btn.addEventListener("click", () => {
-    // Wait for user to pick a spot on the map
     map.once("click", async (e) => {
-      // Must click on land
       const landCheck = map.queryRenderedFeatures(e.point, { layers: ["land-fill"] });
       if (!landCheck.length) {
         alert("Please click on land!");
@@ -200,7 +183,6 @@ function createSetCapitalButton() {
         return;
       }
 
-      // Place a capital marker
       new mapboxgl.Marker({ color: "red" })
         .setLngLat(e.lngLat)
         .addTo(map);
@@ -209,20 +191,22 @@ function createSetCapitalButton() {
       sidebarContent.innerHTML = "Computing territory with binary coastline snap...";
       document.getElementById("sidebar").style.display = "block";
 
-      // 1) Compute the sub-degree territory
       const capital = turf.point([e.lngLat.lng, e.lngLat.lat]);
       const rawPolygon = computeTerritoryPolygon(capital);
 
-      // 2) Load the original land polygons
       const landFC = await fetchLandGeoJSON();
-
-      // 3) Split them by claimed vs unclaimed
       const splitFC = splitLandByClaim(landFC, rawPolygon);
-
-      // 4) Apply to the map => only claimed portion is pink
       applyClaimToLandSource(splitFC);
 
       sidebarContent.innerHTML = "Done! Claimed portion is pink, rest remains normal.";
+
+      // Remove the grid layer and source to free memory
+      if (map.getLayer('speedMapLayer')) {
+        map.removeLayer('speedMapLayer');
+      }
+      if (map.getSource('speedMapSource')) {
+        map.removeSource('speedMapSource');
+      }
     });
   });
 }

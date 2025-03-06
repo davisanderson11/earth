@@ -2,21 +2,21 @@
  * point-init.js
  ********************************************/
 
-// 1° steps across [-90..90, -180..180]
 const LAND_DATA_URL  = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson";
 const LAKES_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_lakes.geojson";
 const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_rivers_lake_centerlines.geojson";
 
 const LAT_START = -90, LAT_END = 90;
 const LON_START = -180, LON_END = 180;
-const DEG_STEP = 1;
-const CHUNK_SIZE_LAT = 10; // process 5 lat rows per chunk for responsiveness
+const DEG_STEP = 0.2;
+const CHUNK_SIZE_LAT = 1; // process rows in chunks for responsiveness
 
-// Dictionary of "lat,lon" => speed
+// Our global dictionary of "lat,lon" => speed
 window.speedMap = {};
-// For debugging, a FeatureCollection of all land points
+// A FeatureCollection of all land points (for debugging)
 window.speedMapFC = turf.featureCollection([]);
 
+/** Basic helper to update the sidebar message. */
 function updateSidebarMessage(msg) {
   const sidebar = document.getElementById('sidebar');
   const content = document.getElementById('sidebar-content');
@@ -27,13 +27,16 @@ function updateSidebarMessage(msg) {
 }
 
 /**
- * Renders the dictionary points as blue dots (so we can confirm we have them).
+ * Renders the dictionary points (speedMapFC) as blue dots, so we can confirm we have them.
+ * Now clustering is enabled.
  */
 function renderSpeedMap() {
   if (!map.getSource('speedMapSource')) {
     map.addSource('speedMapSource', {
       type: 'geojson',
-      data: window.speedMapFC
+      data: window.speedMapFC,
+      cluster: true,         // clustering enabled
+      clusterRadius: 50      // adjust radius (in pixels) as needed
     });
     map.addLayer({
       id: 'speedMapLayer',
@@ -41,7 +44,7 @@ function renderSpeedMap() {
       source: 'speedMapSource',
       paint: {
         'circle-color': 'blue',
-        'ciircle-opacity': 0,
+        'circle-opacity': 0.7,
         'circle-radius': [
           'interpolate',
           ['linear'],
@@ -57,16 +60,68 @@ function renderSpeedMap() {
     map.getSource('speedMapSource').setData(window.speedMapFC);
   }
 
-  // Fit to the bounding box of all points
+  // Fit to bounding box of all points
   const bbox = turf.bbox(window.speedMapFC);
   map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 20 });
 }
 
 /**
- * Creates the land dictionary, factoring in lakes and rivers:
- * - If on land, speed is normally [0.3..0.8].
- * - If also in lake polygon or "on" the rivers centerline, speed is "very high" (here, 5).
- *   (We define “on” for rivers as booleanPointOnLine, but you could do a distance check if you like.)
+ * Try to fetch an existing "landData.json" from your server/folder.
+ * If found, we load it into speedMap / speedMapFC and return true.
+ * If not, we return false, so we know to build it ourselves.
+ */
+async function loadExistingLandGrid() {
+  try {
+    // Fetch from ../assets/landData.json
+    const resp = await fetch("../assets/landData.json");
+    if (!resp.ok) throw new Error("No existing landData.json file found.");
+    const data = await resp.json();
+    // 'data' should be a FeatureCollection with .features
+    if (!data || !data.features) throw new Error("Invalid landData.json format.");
+    // Populate speedMap and speedMapFC
+    window.speedMapFC = data; // the entire FeatureCollection
+    window.speedMap = {};
+    // Build our dictionary from those features
+    for (const feat of data.features) {
+      const [lon, lat] = feat.geometry.coordinates;
+      const latInt = Math.round(lat);
+      const lonInt = Math.round(lon);
+      const key = `${latInt},${lonInt}`;
+      // Use the speed we stored
+      const speedVal = feat.properties.speed;
+      window.speedMap[key] = speedVal;
+    }
+    console.log("Loaded land grid from file. #features=", data.features.length);
+    return true;
+  } catch (err) {
+    console.log("No existing landData.json. We'll build a new one:", err);
+    return false;
+  }
+}
+
+/**
+ * Once we've fully built speedMap and speedMapFC, let's auto-download them
+ * as 'landData.json' so next time we can load it instead of building.
+ */
+function autoDownloadLandGrid() {
+  try {
+    const jsonStr = JSON.stringify(window.speedMapFC);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const link = document.createElement("a");
+    // Download as landData.json
+    link.download = "landData.json";
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  } catch (err) {
+    console.warn("Auto-download failed:", err);
+  }
+}
+
+/**
+ * Creates the land dictionary in a chunked manner:
+ * - If on land, we assign speed [0.3..0.8].
+ * - If in lake or on a river, speed = 5.
+ * (This is your original logic; unchanged except for auto-download.)
  */
 async function initSpeedMap() {
   try {
@@ -84,10 +139,10 @@ async function initSpeedMap() {
       riversResp.json()
     ]);
 
-    // We'll process lat rows in chunks
+    // Process lat rows in chunks
     let currentLat = LAT_START;
 
-    function processChunk() {
+    async function processChunk() {
       const newFeatures = [];
 
       for (let i = 0; i < CHUNK_SIZE_LAT; i++) {
@@ -118,12 +173,9 @@ async function initSpeedMap() {
           }
 
           // 3) Check if point is on (or extremely close to) a river centerline
-          // We'll do a simplistic booleanPointOnLine approach, but you might want a
-          // distance-based approach if the lines are very thin.
           let onRiver = false;
           for (const riverFeat of riversData.features) {
-            // If geometry is linestring or multilinestring, we can test
-            if (turf.booleanPointOnLine && 
+            if (turf.booleanPointOnLine &&
                 (riverFeat.geometry.type === "LineString" || riverFeat.geometry.type === "MultiLineString")) {
               const result = turf.booleanPointOnLine(pt, riverFeat);
               if (result) {
@@ -134,7 +186,7 @@ async function initSpeedMap() {
           }
 
           // 4) Decide the speed
-          let speedVal = Math.random() * 0.05 + 0.03; // default [0.3..0.8]
+          let speedVal = Math.random() * 0.5 + 0.3; // default ~[0.3..0.8]
           if (inLake || onRiver) {
             speedVal = 5; // "very high" speed
           }
@@ -152,17 +204,17 @@ async function initSpeedMap() {
 
       window.speedMapFC.features.push(...newFeatures);
 
-      // Keep going in chunks until lat > LAT_END
+      // Continue in chunks until finished
       if (currentLat <= LAT_END) {
         requestAnimationFrame(processChunk);
       } else {
         updateSidebarMessage(`Done. Built ${Object.keys(window.speedMap).length} land points. Rendering...`);
         renderSpeedMap();
-        updateSidebarMessage("All done. Ready to set a capital!");
+        autoDownloadLandGrid();
+        updateSidebarMessage("All done. Land grid was also downloaded locally as landData.json");
       }
     }
 
-    // Start chunk-based creation
     processChunk();
 
   } catch (err) {
@@ -171,7 +223,18 @@ async function initSpeedMap() {
   }
 }
 
-// Once map loads, begin building the dictionary
-map.on('load', () => {
-  initSpeedMap();
+/**
+ * On map load:
+ * 1) Try loading existing landData.json,
+ *    - If found, skip building and use that data.
+ *    - If not, run initSpeedMap.
+ */
+map.on('load', async () => {
+  const loaded = await loadExistingLandGrid();
+  if (loaded) {
+    updateSidebarMessage("Loaded existing landData.json. Ready to set a capital!");
+    renderSpeedMap();
+  } else {
+    initSpeedMap();
+  }
 });
