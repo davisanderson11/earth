@@ -10,7 +10,7 @@ const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth
 const LAT_START = -90, LAT_END = 90;
 const LON_START = -180, LON_END = 180;
 const DEG_STEP = 1;
-const CHUNK_SIZE_LAT = 5; // process 5 lat rows per chunk for responsiveness
+const CHUNK_SIZE_LAT = 10; // process 5 lat rows per chunk for responsiveness
 
 // Dictionary of "lat,lon" => speed
 window.speedMap = {};

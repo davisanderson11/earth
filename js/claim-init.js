@@ -151,3 +151,16 @@ function approximateKmDistance(lng1, lat1, lng2, lat2) {
   
   createSetCapitalButton();
   
+  const rawPolygon = computeTerritoryPolygon(capitalPoint);
+  const finalPolygon = refineTerritory(
+    rawPolygon,
+    window.landData,      // from map-init or fetch 
+    window.lakeData,      // optional
+    window.riverData,     // optional
+    0.1,                    // snapDeg => 1 degree
+    0.1                   // riverBufferDeg => 0.1 degrees
+  );
+  if (finalPolygon) {
+    renderClaimedTerritory(finalPolygon);
+  }
+  
