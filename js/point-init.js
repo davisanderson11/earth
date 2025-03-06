@@ -41,6 +41,7 @@ function renderSpeedMap() {
       source: 'speedMapSource',
       paint: {
         'circle-color': 'blue',
+        'ciircle-opacity': 0,
         'circle-radius': [
           'interpolate',
           ['linear'],
