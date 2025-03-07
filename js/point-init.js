@@ -4,12 +4,12 @@
 
 const LAND_DATA_URL  = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson";
 const LAKES_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_lakes.geojson";
-const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_rivers_lake_centerlines.geojson";
+const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_rivers_lake_centerlines.geojson";
 
 const LAT_START = -90, LAT_END = 90;
 const LON_START = -180, LON_END = 180;
 const DEG_STEP = 0.2;
-const CHUNK_SIZE_LAT = 1; // process rows in chunks for responsiveness
+const CHUNK_SIZE_LAT = 5; // process rows in chunks for responsiveness
 
 // Our global dictionary of "lat,lon" => speed
 window.speedMap = {};
@@ -186,9 +186,9 @@ async function initSpeedMap() {
           }
 
           // 4) Decide the speed
-          let speedVal = Math.random() * 0.5 + 0.3; // default ~[0.3..0.8]
+          let speedVal = Math.random() * 0.05 + 0.03; // default ~[0.03..0.08]
           if (inLake || onRiver) {
-            speedVal = 5; // "very high" speed
+            speedVal = 500; // "very high" speed
           }
 
           // 5) Store in dictionary
