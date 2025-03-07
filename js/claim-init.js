@@ -83,6 +83,10 @@ function computeTerritoryPolygon(capitalPoint) {
         const fraction = rayPower / speed;
         const nextPos = fastDestination(currentPos, kmStep * fraction, angle);
         const nextSpeed = getSpeedFromDictionary(nextPos);
+        const sidebarContent = document.getElementById("sidebar-content");
+        sidebarContent.innerHTML += `${angle} <br>`;
+
+
         if (nextSpeed <= 0) {
           const boundaryPt = approximateCoastline(currentPos, nextPos);
           endpoints.push(boundaryPt.geometry.coordinates);
@@ -173,12 +177,12 @@ function createSetCapitalButton() {
       applyClaimToLandSource(splitFC);
 
       // Remove the grid layer and source to free memory
-      if (map.getLayer('speedMapLayer')) {
-        map.removeLayer('speedMapLayer');
-      }
-      if (map.getSource('speedMapSource')) {
-        map.removeSource('speedMapSource');
-      }
+      //if (map.getLayer('speedMapLayer')) {
+      //  map.removeLayer('speedMapLayer');
+      //}
+      //if (map.getSource('speedMapSource')) {
+      //  map.removeSource('speedMapSource');
+      //}
     });
   });
 }
