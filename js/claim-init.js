@@ -132,7 +132,7 @@ function applyClaimToLandSource(splitFC) {
   map.setPaintProperty("land-fill", "fill-color", [
     "case",
     ["==", ["get", "claimed"], true],
-    "pink",
+    "red",
     "#d2c290"
   ]);
 }
