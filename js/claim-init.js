@@ -53,7 +53,7 @@ function approximateCoastline(lastOnLand, offLand, maxIterations = 6) {
 }
 
 function computeTerritoryPolygon(capitalPoint) {
-  const initialPower = 200;
+  const initialPower = 50;
   const kmStep = 0.1;
   const angleStep = 1;
   const endpoints = [];

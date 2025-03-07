@@ -8,7 +8,7 @@ const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth
 
 const LAT_START = -90, LAT_END = 90;
 const LON_START = -180, LON_END = 180;
-const DEG_STEP = 0.72;
+const DEG_STEP = 0.2;
 const CHUNK_SIZE_LAT = 1; // process rows in chunks for responsiveness
 
 // Our global dictionary of "lat,lon" => speed
@@ -47,7 +47,8 @@ function renderSpeedMap() {
           'interpolate',
           ['linear'],
           ['get', 'speed'],
-          0, '#0000FF',   // Low speeds are blue
+          0, '#0000FF',
+          0.08, '#00FF00',   // Low speeds are blue
           10, '#FF0000'    // High speeds are red
         ],
         'circle-opacity': 0.7,
@@ -195,7 +196,7 @@ async function initSpeedMap() {
           // 4) Decide the speed
           let speedVal = Math.random() * 0.05 + 0.03; // default ~[0.03..0.08]
           if (inLake || onRiver) {
-            speedVal = 500; // "very high" speed
+            speedVal = 50; // "very high" speed
           }
 
           // 5) Store in dictionary
@@ -239,7 +240,6 @@ async function initSpeedMap() {
 map.on('load', async () => {
   const loaded = await loadExistingLandGrid();
   if (loaded) {
-    updateSidebarMessage("Loaded existing landData.json");
     renderSpeedMap();
   } else {
     initSpeedMap();

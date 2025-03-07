@@ -134,6 +134,9 @@ Promise.all([
     .then(data => { window.vegetationData = data; }),
   fetch("https://raw.githubusercontent.com/circleofconfusion/climate-map/master/topojson/1976-2000.geojson")
     .then(response => response.json())
-    .then(data =>{window.climateData = data;})
+    .then(data =>{window.climateData = data;}),
+  fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/elevation-1deg.geojson")
+    .then(response => response.json())
+    .then(data =>{window.elevationData = data;})
 ])
 .catch(err => console.error("Error loading additional data:", err));

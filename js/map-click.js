@@ -38,6 +38,16 @@ map.on("click", (e) => {
     }
   }
 
+  let evelationFeature = null;
+  if (window.elevationData && window.elevationData.features) {
+    for (let feature of window.elevationData.features) {
+      if (turf.booleanPointInPolygon(point, feature)) {
+        elevationFeature = feature;
+        break;
+      }
+    }
+  }
+
   // Only proceed if any relevant feature is detected
   if (!onLand.length && !climateFeature && !soilFeature && !vegetationFeature) {
     return;
@@ -55,6 +65,11 @@ map.on("click", (e) => {
   if (climateFeature) {
     const koppenCode = climateFeature.properties.CODE || "Unknown Climate";
     infoHTML += `<strong>Climate:</strong> ${koppenCode}<br>`;
+  }
+
+  if (elevationFeature){
+    const height = elevationFeature.properties.height || "No Data";
+    infoHTML += `<strong> Relative Height:</strong> ${height}<br>`;
   }
   
   if (soilFeature) {
