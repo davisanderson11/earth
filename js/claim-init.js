@@ -83,8 +83,6 @@ function computeTerritoryPolygon(capitalPoint) {
         const fraction = rayPower / speed;
         const nextPos = fastDestination(currentPos, kmStep * fraction, angle);
         const nextSpeed = getSpeedFromDictionary(nextPos);
-        const sidebarContent = document.getElementById("sidebar-content");
-        sidebarContent.innerHTML += `${angle} <br>`;
 
 
         if (nextSpeed <= 0) {
