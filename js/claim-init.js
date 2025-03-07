@@ -3,12 +3,10 @@ function fastDestination(point, distanceKm, bearingDeg) {
   const [lng, lat] = point.geometry.coordinates;
   const rad = Math.PI / 180;
   const bearing = bearingDeg * rad;
-
   // ~111 km per 1° lat
   const deltaLat = (distanceKm / 111) * Math.cos(bearing);
   // ~111 * cos(lat) for 1° lon
   const deltaLng = (distanceKm / (111 * Math.cos(lat * rad))) * Math.sin(bearing);
-
   return turf.point([lng + deltaLng, lat + deltaLat]);
 }
 
@@ -24,65 +22,28 @@ const elevationToSpeed = {
 };
 
 /**
- * Append a message to the sidebar.
- */
-function logToSidebar(message) {
-  const sidebar = document.getElementById("sidebar-content");
-  if (sidebar) {
-    sidebar.innerHTML += message + "<br/>";
-  }
-}
-
-/**
- * Build a dictionary (window.speedMap) from the elevation data.
- * Prints progress for every feature and coordinate processed.
- * Uses asynchronous yields so the page does not freeze.
- */
-async function buildSpeedMap() {
-  window.speedMap = {};
-  const sidebar = document.getElementById("sidebar-content");
-  if (!window.elevationData || !window.elevationData.features) {
-    if (sidebar) sidebar.innerHTML = "Elevation data not loaded.";
-    return;
-  }
-  const features = window.elevationData.features;
-  const totalFeatures = features.length;
-  logToSidebar("Starting to build speed map from elevation data...");
-  
-  for (let i = 0; i < totalFeatures; i++) {
-    const feature = features[i];
-    const bbox = turf.bbox(feature); // [minLng, minLat, maxLng, maxLat]
-    const [minLng, minLat, maxLng, maxLat] = bbox;
-    logToSidebar(`Processing feature ${i+1}/${totalFeatures} with height "${feature.properties.height}" and bbox [${bbox.join(", ")}]`);
-    
-    // Iterate over integer coordinates within the feature's bounding box.
-    for (let lat = Math.floor(minLat); lat <= Math.ceil(maxLat); lat++) {
-      for (let lon = Math.floor(minLng); lon <= Math.ceil(maxLng); lon++) {
-        const pt = turf.point([lon, lat]);
-        if (turf.booleanPointInPolygon(pt, feature)) {
-          const key = `${lat},${lon}`;
-          const speed = elevationToSpeed[feature.properties.height] || 0;
-          window.speedMap[key] = speed;
-          logToSidebar(`Set speedMap[${key}] = ${speed}`);
-        }
-      }
-    }
-    logToSidebar(`Finished processing feature ${i+1}/${totalFeatures}.`);
-    // Yield to the browser to keep the UI responsive.
-    await new Promise(resolve => setTimeout(resolve, 0));
-  }
-  logToSidebar("Speed dictionary built.");
-}
-
-/**
- * Look up speed from the nearest integer lat/lon in speedMap. Returns 0 if none found.
+ * Look up the speed value using the rendered elevation-fill layer.
+ * Given a Turf point, convert its coordinates to screen pixels and query
+ * the rendered features from the "elevation-fill" layer.
  */
 function getSpeedFromDictionary(point) {
-  const [lng, lat] = point.geometry.coordinates;
-  const latInt = Math.round(lat);
-  const lonInt = Math.round(lng);
-  const key = `${latInt},${lonInt}`;
-  return window.speedMap[key] || 0;
+  const coords = point.geometry.coordinates;
+  const pixel = map.project(coords);
+  const features = map.queryRenderedFeatures(pixel, { layers: ["elevation-fill"] });
+  if (features && features.length > 0) {
+    const heightCategory = features[0].properties.height;
+    return elevationToSpeed[heightCategory] || 0;
+  }
+  return 0;
+}
+
+/**
+ * Helper: Returns true if the given Turf point is on land by querying the "land-fill" layer.
+ */
+function isOnLand(point) {
+  const pixel = map.project(point.geometry.coordinates);
+  const features = map.queryRenderedFeatures(pixel, { layers: ["land-fill"] });
+  return features && features.length > 0;
 }
 
 /**
@@ -96,85 +57,58 @@ function interpolatePoints(p1, p2, t) {
   return turf.point([lng, lat]);
 }
 
-function approximateCoastline(lastOnLand, offLand, maxIterations = 6) {
-  let lowPt = lastOnLand;
-  let highPt = offLand;
-
-  for (let i = 0; i < maxIterations; i++) {
-    const mid = interpolatePoints(lowPt, highPt, 0.5);
-    const spd = getSpeedFromDictionary(mid);
-    if (spd > 0) {
-      // mid is on land => shift the lower bound up
-      lowPt = mid;
-    } else {
-      // mid is ocean => shift upper bound down
-      highPt = mid;
-    }
-  }
-  return lowPt;
-}
-
-function computeTerritoryPolygon(capitalPoint) {
+/**
+ * Computes a territory polygon starting from a given capital point.
+ * For each degree (0 to 359), this async function updates the sidebar with progress.
+ * It then extends the ray by repeatedly stepping along the current bearing until
+ * the next point would be off land (as determined by isOnLand).
+ */
+async function computeTerritoryPolygon(capitalPoint) {
   const initialPower = 50;
   const kmStep = 0.1;
-  const angleStep = 1;
+  const angleStep = 5;
   const endpoints = [];
-
+  
   for (let angle = 0; angle < 360; angle += angleStep) {
+    // Update sidebar with current progress.
+    document.getElementById("sidebar-content").innerHTML = `Computing territory ${angle}/360`;
+    
     let rayPower = initialPower;
     let currentPos = capitalPoint;
-
-    while (rayPower > 0) {
-      const speed = getSpeedFromDictionary(currentPos);
-      if (speed <= 0) {
+    
+    // Continue stepping while we have power and remain on land.
+    while (rayPower > 0 && isOnLand(currentPos)) {
+      let nextPos = fastDestination(currentPos, kmStep, angle);
+      // If the next point is off land, then we've reached water.
+      if (!isOnLand(nextPos)) {
         break;
       }
-
-      if (rayPower > speed) {
-        rayPower -= speed;
-        const nextPos = fastDestination(currentPos, kmStep, angle);
-        const nextSpeed = getSpeedFromDictionary(nextPos);
-        if (nextSpeed <= 0) {
-          const boundaryPt = approximateCoastline(currentPos, nextPos);
-          endpoints.push(boundaryPt.geometry.coordinates);
-          break;
-        } else {
-          currentPos = nextPos;
-        }
-      } else {
-        const fraction = rayPower / speed;
-        const nextPos = fastDestination(currentPos, kmStep * fraction, angle);
-        const nextSpeed = getSpeedFromDictionary(nextPos);
-
-        if (nextSpeed <= 0) {
-          const boundaryPt = approximateCoastline(currentPos, nextPos);
-          endpoints.push(boundaryPt.geometry.coordinates);
-          break;
-        } else {
-          currentPos = nextPos;
-        }
-        rayPower = 0;
-      }
+      // Otherwise, decrement our remaining power based on the speed at the current point.
+      const speed = getSpeedFromDictionary(currentPos);
+      rayPower -= speed;
+      currentPos = nextPos;
     }
-    if (rayPower <= 0) {
-      endpoints.push(currentPos.geometry.coordinates);
-    }
+    endpoints.push(currentPos.geometry.coordinates);
+    // Yield control to allow UI updates.
+    await new Promise(resolve => setTimeout(resolve, 0));
   }
-
   endpoints.push(endpoints[0]);
   return turf.polygon([endpoints]);
 }
 
-/** Fetch the same Natural Earth land GeoJSON used by "land-fill" in map-init.js. */
+/** Fetch the Natural Earth land GeoJSON used for claim splitting. */
 async function fetchLandGeoJSON() {
   const url = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson";
   const resp = await fetch(url);
   return resp.json();
 }
 
+/**
+ * Splits the land feature collection by the claim polygon,
+ * marking claimed areas.
+ */
 function splitLandByClaim(landFC, claimPoly) {
   const outFeatures = [];
-
   for (const landFeat of landFC.features) {
     const intersection = turf.intersect(landFeat, claimPoly);
     if (intersection) {
@@ -187,10 +121,12 @@ function splitLandByClaim(landFC, claimPoly) {
       outFeatures.push(leftover);
     }
   }
-
   return turf.featureCollection(outFeatures);
 }
 
+/**
+ * Applies the claim by updating the "land" source data and setting fill colors.
+ */
 function applyClaimToLandSource(splitFC) {
   map.getSource("land").setData(splitFC);
   map.setPaintProperty("land-fill", "fill-color", [
@@ -201,6 +137,9 @@ function applyClaimToLandSource(splitFC) {
   ]);
 }
 
+/**
+ * Creates a button to set the capital and compute the territory polygon.
+ */
 function createSetCapitalButton() {
   const btn = document.createElement("button");
   btn.id = "setCapitalButton";
@@ -214,10 +153,8 @@ function createSetCapitalButton() {
     font-size: 14px;
     cursor: pointer;
   `;
-  // Initially disable the button until the speed dictionary is built.
-  btn.disabled = true;
   document.body.appendChild(btn);
-
+  
   btn.addEventListener("click", () => {
     map.once("click", async (e) => {
       const landCheck = map.queryRenderedFeatures(e.point, { layers: ["land-fill"] });
@@ -226,33 +163,17 @@ function createSetCapitalButton() {
         btn.click();
         return;
       }
-      const sidebarContent = document.getElementById("sidebar-content");
-      sidebarContent.innerHTML = "Computing territory...<br/>";
+      document.getElementById("sidebar-content").innerHTML = "Computing territory...<br/>";
       document.getElementById("sidebar").style.display = "block";
-
+      
       const capital = turf.point([e.lngLat.lng, e.lngLat.lat]);
-      const rawPolygon = computeTerritoryPolygon(capital);
-
+      const rawPolygon = await computeTerritoryPolygon(capital);
       const landFC = await fetchLandGeoJSON();
       const splitFC = splitLandByClaim(landFC, rawPolygon);
       applyClaimToLandSource(splitFC);
-
-      // Remove the grid layer and source to free memory
-      // if (map.getLayer('speedMapLayer')) {
-      //   map.removeLayer('speedMapLayer');
-      // }
-      // if (map.getSource('speedMapSource')) {
-      //   map.removeSource('speedMapSource');
-      // }
     });
   });
 }
 
-// Initialize the button.
+// Initialize the Set Capital button.
 createSetCapitalButton();
-
-// Build the speed dictionary on load and enable the button when done.
-buildSpeedMap().then(() => {
-  logToSidebar("Dictionary build complete. Enabling Set Capital button.");
-  document.getElementById("setCapitalButton").disabled = false;
-});

@@ -25,9 +25,24 @@ const styleConfig = {
     "antarctic-ice-shelves": {
       type: "geojson",
       data: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_antarctic_ice_shelves_polys.geojson"
+    },
+    // New elevation source
+    "elevation": {
+      type: "geojson",
+      data: "https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/elevation-1deg.geojson"
     }
   },
   layers: [
+    // Elevation fill layer (transparent) used for query in raycasting.
+    {
+      id: "elevation-fill",
+      type: "fill",
+      source: "elevation",
+      paint: {
+        "fill-opacity": 0,
+        "fill-color": "rgba(0,0,0,0)"
+      }
+    },
     // Ocean background
     {
       id: "background",
@@ -111,7 +126,6 @@ map.touchZoomRotate.enableRotation();
 // Load the map
 map.on("load", () => {
   map.setPitch(10);
-
   // Create atmosphere
   map.setFog({
     color: "rgb(186, 210, 235)",
@@ -124,7 +138,7 @@ map.on("load", () => {
 // Allow other scripts to access the map
 window.map = map;
 
-// Preload OpenGeo data
+// Preload additional OpenGeo data for popups/info
 Promise.all([
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson")
     .then(response => response.json())
@@ -134,9 +148,10 @@ Promise.all([
     .then(data => { window.vegetationData = data; }),
   fetch("https://raw.githubusercontent.com/circleofconfusion/climate-map/master/topojson/1976-2000.geojson")
     .then(response => response.json())
-    .then(data =>{window.climateData = data;}),
+    .then(data => { window.climateData = data; }),
+  // Although elevation is loaded as a source, we also store it for popup queries if needed.
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/elevation-1deg.geojson")
     .then(response => response.json())
-    .then(data =>{window.elevationData = data;})
+    .then(data => { window.elevationData = data; })
 ])
 .catch(err => console.error("Error loading additional data:", err));
