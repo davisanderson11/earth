@@ -8,8 +8,8 @@ const RIVERS_DATA_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth
 
 const LAT_START = -90, LAT_END = 90;
 const LON_START = -180, LON_END = 180;
-const DEG_STEP = 0.2;
-const CHUNK_SIZE_LAT = 5; // process rows in chunks for responsiveness
+const DEG_STEP = 0.72;
+const CHUNK_SIZE_LAT = 1; // process rows in chunks for responsiveness
 
 // Our global dictionary of "lat,lon" => speed
 window.speedMap = {};
@@ -43,7 +43,13 @@ function renderSpeedMap() {
       type: 'circle',
       source: 'speedMapSource',
       paint: {
-        'circle-color': 'blue',
+        'circle-color': [
+          'interpolate',
+          ['linear'],
+          ['get', 'speed'],
+          0, '#0000FF',   // Low speeds are blue
+          10, '#FF0000'    // High speeds are red
+        ],
         'circle-opacity': 0.7,
         'circle-radius': [
           'interpolate',
@@ -56,6 +62,7 @@ function renderSpeedMap() {
         ]
       }
     });
+    
   } else {
     map.getSource('speedMapSource').setData(window.speedMapFC);
   }
