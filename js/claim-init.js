@@ -12,6 +12,68 @@ function fastDestination(point, distanceKm, bearingDeg) {
   return turf.point([lng + deltaLng, lat + deltaLat]);
 }
 
+/** Mapping from elevation categories to speed values. */
+const elevationToSpeed = {
+  "min": 0,
+  "low": 0.03,
+  "medLow": 0.05,
+  "med": 0.07,
+  "medHigh": 0.09,
+  "high": 0.11,
+  "max": 0.15
+};
+
+/**
+ * Append a message to the sidebar.
+ */
+function logToSidebar(message) {
+  const sidebar = document.getElementById("sidebar-content");
+  if (sidebar) {
+    sidebar.innerHTML += message + "<br/>";
+  }
+}
+
+/**
+ * Build a dictionary (window.speedMap) from the elevation data.
+ * Prints progress for every feature and coordinate processed.
+ * Uses asynchronous yields so the page does not freeze.
+ */
+async function buildSpeedMap() {
+  window.speedMap = {};
+  const sidebar = document.getElementById("sidebar-content");
+  if (!window.elevationData || !window.elevationData.features) {
+    if (sidebar) sidebar.innerHTML = "Elevation data not loaded.";
+    return;
+  }
+  const features = window.elevationData.features;
+  const totalFeatures = features.length;
+  logToSidebar("Starting to build speed map from elevation data...");
+  
+  for (let i = 0; i < totalFeatures; i++) {
+    const feature = features[i];
+    const bbox = turf.bbox(feature); // [minLng, minLat, maxLng, maxLat]
+    const [minLng, minLat, maxLng, maxLat] = bbox;
+    logToSidebar(`Processing feature ${i+1}/${totalFeatures} with height "${feature.properties.height}" and bbox [${bbox.join(", ")}]`);
+    
+    // Iterate over integer coordinates within the feature's bounding box.
+    for (let lat = Math.floor(minLat); lat <= Math.ceil(maxLat); lat++) {
+      for (let lon = Math.floor(minLng); lon <= Math.ceil(maxLng); lon++) {
+        const pt = turf.point([lon, lat]);
+        if (turf.booleanPointInPolygon(pt, feature)) {
+          const key = `${lat},${lon}`;
+          const speed = elevationToSpeed[feature.properties.height] || 0;
+          window.speedMap[key] = speed;
+          logToSidebar(`Set speedMap[${key}] = ${speed}`);
+        }
+      }
+    }
+    logToSidebar(`Finished processing feature ${i+1}/${totalFeatures}.`);
+    // Yield to the browser to keep the UI responsive.
+    await new Promise(resolve => setTimeout(resolve, 0));
+  }
+  logToSidebar("Speed dictionary built.");
+}
+
 /**
  * Look up speed from the nearest integer lat/lon in speedMap. Returns 0 if none found.
  */
@@ -84,7 +146,6 @@ function computeTerritoryPolygon(capitalPoint) {
         const nextPos = fastDestination(currentPos, kmStep * fraction, angle);
         const nextSpeed = getSpeedFromDictionary(nextPos);
 
-
         if (nextSpeed <= 0) {
           const boundaryPt = approximateCoastline(currentPos, nextPos);
           endpoints.push(boundaryPt.geometry.coordinates);
@@ -153,6 +214,8 @@ function createSetCapitalButton() {
     font-size: 14px;
     cursor: pointer;
   `;
+  // Initially disable the button until the speed dictionary is built.
+  btn.disabled = true;
   document.body.appendChild(btn);
 
   btn.addEventListener("click", () => {
@@ -164,7 +227,7 @@ function createSetCapitalButton() {
         return;
       }
       const sidebarContent = document.getElementById("sidebar-content");
-      sidebarContent.innerHTML = "Computing territory...";
+      sidebarContent.innerHTML = "Computing territory...<br/>";
       document.getElementById("sidebar").style.display = "block";
 
       const capital = turf.point([e.lngLat.lng, e.lngLat.lat]);
@@ -175,15 +238,21 @@ function createSetCapitalButton() {
       applyClaimToLandSource(splitFC);
 
       // Remove the grid layer and source to free memory
-      //if (map.getLayer('speedMapLayer')) {
-      //  map.removeLayer('speedMapLayer');
-      //}
-      //if (map.getSource('speedMapSource')) {
-      //  map.removeSource('speedMapSource');
-      //}
+      // if (map.getLayer('speedMapLayer')) {
+      //   map.removeLayer('speedMapLayer');
+      // }
+      // if (map.getSource('speedMapSource')) {
+      //   map.removeSource('speedMapSource');
+      // }
     });
   });
 }
 
-// Initialize the button
+// Initialize the button.
 createSetCapitalButton();
+
+// Build the speed dictionary on load and enable the button when done.
+buildSpeedMap().then(() => {
+  logToSidebar("Dictionary build complete. Enabling Set Capital button.");
+  document.getElementById("setCapitalButton").disabled = false;
+});
