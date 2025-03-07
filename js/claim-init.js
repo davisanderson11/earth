@@ -1,16 +1,16 @@
-/** Moves a Turf point sub-degree using equirectangular math. */
+// Move turf.js point to intermediary
 function fastDestination(point, distanceKm, bearingDeg) {
   const [lng, lat] = point.geometry.coordinates;
   const rad = Math.PI / 180;
   const bearing = bearingDeg * rad;
-  // ~111 km per 1° lat
+  // 111 km per 1 deg lat (TODO: change this)
   const deltaLat = (distanceKm / 111) * Math.cos(bearing);
-  // ~111 * cos(lat) for 1° lon
+  // 111 * cos(lat) for 1 deg lng
   const deltaLng = (distanceKm / (111 * Math.cos(lat * rad))) * Math.sin(bearing);
   return turf.point([lng + deltaLng, lat + deltaLat]);
 }
 
-/** Mapping from elevation categories to speed values. */
+// Map height to speed
 const elevationToSpeed = {
   "min": 0,
   "low": 0.03,
@@ -21,11 +21,7 @@ const elevationToSpeed = {
   "max": 0.15
 };
 
-/**
- * Look up the speed value using the rendered elevation-fill layer.
- * Given a Turf point, convert its coordinates to screen pixels and query
- * the rendered features from the "elevation-fill" layer.
- */
+// Look up speed via elevation-fill
 function getSpeedFromDictionary(point) {
   const coords = point.geometry.coordinates;
   const pixel = map.project(coords);
@@ -37,18 +33,14 @@ function getSpeedFromDictionary(point) {
   return 0;
 }
 
-/**
- * Helper: Returns true if the given Turf point is on land by querying the "land-fill" layer.
- */
+// Returns true if point is on land
 function isOnLand(point) {
   const pixel = map.project(point.geometry.coordinates);
   const features = map.queryRenderedFeatures(pixel, { layers: ["land-fill"] });
   return features && features.length > 0;
 }
 
-/**
- * Returns a new point that linearly interpolates between p1 and p2 by fraction t in [0..1].
- */
+// Self explanatory
 function interpolatePoints(p1, p2, t) {
   const [lng1, lat1] = p1.geometry.coordinates;
   const [lng2, lat2] = p2.geometry.coordinates;
@@ -57,12 +49,7 @@ function interpolatePoints(p1, p2, t) {
   return turf.point([lng, lat]);
 }
 
-/**
- * Computes a territory polygon starting from a given capital point.
- * For each degree (0 to 359), this async function updates the sidebar with progress.
- * It then extends the ray by repeatedly stepping along the current bearing until
- * the next point would be off land (as determined by isOnLand).
- */
+// Raycast from centerpoint and set endpoint of rays to points on polygon
 async function computeTerritoryPolygon(capitalPoint) {
   const initialPower = 50;
   const kmStep = 0.1;
@@ -70,43 +57,40 @@ async function computeTerritoryPolygon(capitalPoint) {
   const endpoints = [];
   
   for (let angle = 0; angle < 360; angle += angleStep) {
-    // Update sidebar with current progress.
+    // Update sidebar with current progress
     document.getElementById("sidebar-content").innerHTML = `Computing territory ${angle}/360`;
     
     let rayPower = initialPower;
     let currentPos = capitalPoint;
     
-    // Continue stepping while we have power and remain on land.
+    // Continue stepping while having power and on land
     while (rayPower > 0 && isOnLand(currentPos)) {
       let nextPos = fastDestination(currentPos, kmStep, angle);
-      // If the next point is off land, then we've reached water.
+      // If the next point is off land, it is water
       if (!isOnLand(nextPos)) {
         break;
       }
-      // Otherwise, decrement our remaining power based on the speed at the current point.
+      // Decrement power by speed at current point
       const speed = getSpeedFromDictionary(currentPos);
       rayPower -= speed;
       currentPos = nextPos;
     }
     endpoints.push(currentPos.geometry.coordinates);
-    // Yield control to allow UI updates.
+    // Yield control to allow UI updates
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   endpoints.push(endpoints[0]);
   return turf.polygon([endpoints]);
 }
 
-/** Fetch the Natural Earth land GeoJSON used for claim splitting. */
+// Fetch the land GeoJSON
 async function fetchLandGeoJSON() {
   const url = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson";
   const resp = await fetch(url);
   return resp.json();
 }
 
-/**
- * Splits the land feature collection by the claim polygon,
- * marking claimed areas.
- */
+// Separate claim from main polygon
 function splitLandByClaim(landFC, claimPoly) {
   const outFeatures = [];
   for (const landFeat of landFC.features) {
@@ -124,9 +108,7 @@ function splitLandByClaim(landFC, claimPoly) {
   return turf.featureCollection(outFeatures);
 }
 
-/**
- * Applies the claim by updating the "land" source data and setting fill colors.
- */
+// Apply claim
 function applyClaimToLandSource(splitFC) {
   map.getSource("land").setData(splitFC);
   map.setPaintProperty("land-fill", "fill-color", [
@@ -137,9 +119,7 @@ function applyClaimToLandSource(splitFC) {
   ]);
 }
 
-/**
- * Creates a button to set the capital and compute the territory polygon.
- */
+// Compute territory polygon
 function createSetCapitalButton() {
   const btn = document.createElement("button");
   btn.id = "setCapitalButton";
@@ -175,5 +155,5 @@ function createSetCapitalButton() {
   });
 }
 
-// Initialize the Set Capital button.
+// Initialize debug set capital button
 createSetCapitalButton();

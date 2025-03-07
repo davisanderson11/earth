@@ -33,7 +33,7 @@ const styleConfig = {
     }
   },
   layers: [
-    // Elevation fill layer (transparent) used for query in raycasting.
+    // Elevation fill layer used for query in raycasting
     {
       id: "elevation-fill",
       type: "fill",
@@ -138,7 +138,7 @@ map.on("load", () => {
 // Allow other scripts to access the map
 window.map = map;
 
-// Preload additional OpenGeo data for popups/info
+// Preload additional OpenGeo data
 Promise.all([
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/soil-quality-0-5deg.geojson")
     .then(response => response.json())
@@ -149,7 +149,6 @@ Promise.all([
   fetch("https://raw.githubusercontent.com/circleofconfusion/climate-map/master/topojson/1976-2000.geojson")
     .then(response => response.json())
     .then(data => { window.climateData = data; }),
-  // Although elevation is loaded as a source, we also store it for popup queries if needed.
   fetch("https://raw.githubusercontent.com/davisanderson11/openGeo/main/data/geojson/elevation-1deg.geojson")
     .then(response => response.json())
     .then(data => { window.elevationData = data; })

@@ -1,16 +1,16 @@
-// Add a click event to display popup information for climate and resource features
+// Add a click event to display information on sidebar
 map.on("click", (e) => {
-  // Query features that are rendered (land and climate)
+  // Query features that are rendered (land, climate)
   const onLand = map.queryRenderedFeatures(e.point, { layers: ['land-fill'] });
   
-  // Create a Turf.js point from the click coordinates
+  // Create a turf.js point from the click coordinates
   const point = turf.point([e.lngLat.lng, e.lngLat.lat]);
 
   let climateFeature = null;
   if (window.climateData && window.climateData.features) {
     for (let feature of window.climateData.features) {
       if (turf.booleanPointInPolygon(point, feature)) {
-        climateFeature = feature;  // Assign the matched feature
+        climateFeature = feature;
         break;
       }
     }
@@ -38,6 +38,7 @@ map.on("click", (e) => {
     }
   }
 
+  // Check elevation data
   let evelationFeature = null;
   if (window.elevationData && window.elevationData.features) {
     for (let feature of window.elevationData.features) {
@@ -48,14 +49,14 @@ map.on("click", (e) => {
     }
   }
 
-  // Only proceed if any relevant feature is detected
+  // Only proceed if any relevant feature is detected (minus elevation)
   if (!onLand.length && !climateFeature && !soilFeature && !vegetationFeature) {
     return;
   }
 
   let infoHTML = "";
   
-  // Show coordinates if clicked on land
+  // Show coordinates if on land
   if (onLand.length) {
     const longitude = e.lngLat.lng.toFixed(3);
     const latitude = e.lngLat.lat.toFixed(3);
